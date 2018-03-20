@@ -90,6 +90,7 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 			
 			JSONObject meta = new JSONObject();
 			meta.put("logger", ev.getLoggerName());
+			meta.put("thread", ev.getThreadName());
 			line.put("meta", meta);
 			
 			if(this.sendMDC && !ev.getMDCPropertyMap().isEmpty()){
