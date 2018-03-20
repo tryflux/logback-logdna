@@ -6,8 +6,11 @@
     <appender name="LOGDNA-HTTP" class="net._95point2.utils.LogDNAAppender">
 		<appName>LogDNA-Logback-Test</appName>
 		<ingestKey>${LOGDNA_INGEST_KEY}</ingestKey>
-		<includeStacktrace>true</includeStacktrace>
 		<tags>test</tags>
+		<encoder>
+			<pattern>[%thread] %m%n</pattern>
+			<charset>utf8</charset>
+		</encoder>
   	</appender>
   	
   	<!-- ... and this one should be attached to the root -->

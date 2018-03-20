@@ -7,6 +7,9 @@ import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Map.Entry;
 
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.core.Context;
+import ch.qos.logback.core.encoder.Encoder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -33,10 +36,10 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 	 * configurables ( plus ingestKey )
 	 */
 	private String appName;
-	private boolean includeStacktrace = true;
 	private boolean sendMDC = true;
 	private String tags = "";
-	
+	private Encoder<ILoggingEvent> encoder;
+
 	public LogDNAAppender() {
 		try {
 			this.hostname = InetAddress.getLocalHost().getHostName();
@@ -51,27 +54,28 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 	}
 
 	@Override
+	public void setContext(Context context) {
+		super.setContext(context);
+
+		if (encoder == null) {
+			PatternLayoutEncoder defaultEncoder = new PatternLayoutEncoder();
+			defaultEncoder.setPattern("[%thread] %logger -- %m%n");
+			defaultEncoder.setContext(context);
+			defaultEncoder.start();
+			encoder = defaultEncoder;
+		}
+	}
+
+	@Override
 	protected void append(ILoggingEvent ev) 
 	{
 		/* not interested in consuming our own filth */
 		if(ev.getLoggerName().equals(LogDNAAppender.class.getName())){
 			return;
 		}
-		
-		StringBuilder sb = new StringBuilder()
-				.append("[").append(ev.getThreadName()).append("] ")
-				.append(ev.getLoggerName())
-				.append(" -- ")
-				.append(ev.getFormattedMessage());
-		
-		if(ev.getThrowableProxy() != null && this.includeStacktrace){
-			IThrowableProxy tp = ev.getThrowableProxy();
-			sb.append("\n\n").append(tp.getClassName()).append(": ").append(tp.getMessage());
-			for(StackTraceElementProxy ste : tp.getStackTraceElementProxyArray()){
-				sb.append("\n\t").append(ste.getSTEAsString());
-			}
-		}
-		
+
+		String logLine = new String(encoder.encode(ev));
+
 		try
 		{
 			JSONObject payload = new JSONObject();
@@ -82,7 +86,7 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 			line.put("timestamp", ev.getTimeStamp());
 			line.put("level", ev.getLevel().toString());
 			line.put("app", this.appName);
-			line.put("line", sb.toString());
+			line.put("line", logLine);
 			
 			JSONObject meta = new JSONObject();
 			meta.put("logger", ev.getLoggerName());
@@ -98,8 +102,8 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 			lines.put(line);
 
 			StringBuilder path = new StringBuilder();
-			path.append("?hostname=").append(encode(this.hostname))
-					.append("&now=").append(encode(String.valueOf(System.currentTimeMillis())));
+			path.append("?hostname=").append(urlEncode(this.hostname))
+					.append("&now=").append(urlEncode(String.valueOf(System.currentTimeMillis())));
 
 			if (tags != null) {
 				path.append("&tags=").append(tags);
@@ -123,8 +127,6 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 		}
 	}
 	
-	
-	
 	public void setAppName(String appName) {
 		this.appName = appName;
 	}
@@ -137,15 +139,15 @@ public class LogDNAAppender extends UnsynchronizedAppenderBase<ILoggingEvent>
 		this.sendMDC = sendMDC;
 	}
 
-	public void setIncludeStacktrace(boolean includeStacktrace) {
-		this.includeStacktrace = includeStacktrace;
-	}
-
 	public void setTags(String tags) {
-		this.tags = encode(tags);
+		this.tags = urlEncode(tags);
 	}
 
-	private static String encode(String str) {
+	public void setEncoder(Encoder<ILoggingEvent> encoder) {
+		this.encoder = encoder;
+	}
+
+	private static String urlEncode(String str) {
         try 
         {
             return URLEncoder.encode(str, "UTF-8");

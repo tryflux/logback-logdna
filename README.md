@@ -20,9 +20,14 @@ This is what a logback.xml might look like:
         <!-- Take both of these LOGDNA appenders -->
         <!-- this one is a plain old HTTP transport -->
         <appender name="LOGDNA-HTTP" class="net._95point2.utils.LogDNAAppender">
-        <appName>LogDNA-Logback-Test</appName>
-        <ingestKey>${LOGDNA_INGEST_KEY}</ingestKey>
-        <includeStacktrace>true</includeStacktrace>
+            <appName>LogDNA-Logback-Test</appName>
+            <ingestKey>${LOGDNA_INGEST_KEY}</ingestKey>
+            
+            <!-- Optionally change the layout pattern -->
+            <encoder>
+                <pattern>[%thread] %m%n</pattern>
+                <charset>utf8</charset>
+            </encoder>
         </appender>
 
         <!-- ... and this one should be attached to the root -->
@@ -82,7 +87,6 @@ You can go to town on most other logback configurations but the LogDNA only has 
     
 * `<appName>LogDNA-Logback-Test</appName>` set this for good log management in LogDNA
 * `<ingestKey>${LOGDNA_INGEST_KEY}</ingestKey>` signup to LogDNA and find this in your account profile
-* `<includeStacktrace>true</includeStacktrace>` this library can send multiline stacktraces (see image) - Raw syslog transport cannot
 * `<sendMDC>true</sendMDC>` copies over logback's Mapped Diagnostic Context [(MDC)](https://logback.qos.ch/manual/mdc.html) as LogDNA Metadata which are then indexed and searchable.
 * `<tags>production</tags>` Sets the tags to send to LogDNA, multiple tags should be comma-separated
     
